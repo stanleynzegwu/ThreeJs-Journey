@@ -1,7 +1,7 @@
 // import * as THREE from 'three'
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import * as dat from 'lil-gui'
-// import CANNON, { Vec3 } from 'cannon'
+// import * as CANNON from 'cannon-es'
 
 // /**
 //  * Debug
@@ -223,7 +223,9 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'lil-gui'
-import CANNON from 'cannon'
+import * as CANNON from 'cannon-es'
+import CannonDebugger from 'cannon-es-debugger'
+
 
 /**
  * Debug
@@ -244,6 +246,53 @@ debugObj.createSphere = () => {
 
 gui.add(debugObj,'createSphere')
 
+debugObj.createBox = () =>
+{
+    createBox(
+        Math.random(),
+        Math.random(),
+        Math.random(),
+        {
+            x: (Math.random() - 0.5) * 3,
+            y: 3,
+            z: (Math.random() - 0.5) * 3
+        }
+    )
+}
+gui.add(debugObj, 'createBox')
+
+// Reset
+debugObj.reset = () =>{
+    for(let object of objectsToUpate){
+        const {mesh,body} = object
+        body.removeEventListener('collide', playHitSound)
+        world.removeBody(body)
+        scene.remove(mesh)
+    }
+
+    objectsToUpate.splice(0,objectsToUpate.length)
+}
+gui.add(debugObj, 'reset')
+
+/**
+ * Sounds
+ */
+const hitSound = new Audio('/sounds/hit.mp3')
+const playHitSound = (collision) => {
+    const impactStrength = collision.contact.getImpactVelocityAlongNormal()
+
+    if(impactStrength > 1.5){
+        hitSound.currentTime = 0
+
+        impactStrength > 5 ? hitSound.volume = 0.9 : 
+        impactStrength > 3 ? hitSound.volume = 0.5 :
+        impactStrength > 2 ? hitSound.volume = 0.3 :
+        hitSound.volume = 0.2
+
+        hitSound.play()
+    }
+
+}
 
 /**
  * Base
@@ -302,6 +351,8 @@ floorBody.quaternion.setFromAxisAngle(
 floorBody.addShape(floorShape) 
 // floorBody.addShape(floorShape)  //you can have multiple shapes
 world.addBody(floorBody)
+world.broadphase = new CANNON.SAPBroadphase(world)
+world.allowSleep = true
 
 
 /**
@@ -389,7 +440,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
  */
 const objectsToUpate = []
 const sphereGeometry = new THREE.SphereGeometry(1, 20, 20)
-const sphereMaterial =         new THREE.MeshStandardMaterial({
+const sphereMaterial = new THREE.MeshStandardMaterial({
     metalness: 0.3,
     roughness: 0.4,
     envMap: environmentMapTexture,
@@ -413,6 +464,7 @@ const createSphere = (radius,position) => {
         material: defaultMaterial
     })
     body.position.copy(position)
+    body.addEventListener('collide', playHitSound)
     world.addBody(body)
 
     //save in objects to update
@@ -423,6 +475,43 @@ const createSphere = (radius,position) => {
 
 createSphere(0.5, {x:0, y:3, z:0})
 
+//Box
+const boxGeometry = new THREE.BoxGeometry(1,1,1)
+const boxMaterial = new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+    envMapIntensity: 0.5
+})
+
+const createBox = (width,height,depth,position) => {
+    //ThrreJs Mesh
+    const mesh = new THREE.Mesh(boxGeometry,boxMaterial)
+    mesh.scale.set(width,height,depth)
+    mesh.position.copy(position)
+    mesh.castShadow = true
+    scene.add(mesh)
+
+    //Cannon.js body
+    const shape = new CANNON.Box(new CANNON.Vec3(width * 0.5, height * 0.5, depth * 0.5))
+    const body = new CANNON.Body({
+        mass:1,
+        position: new CANNON.Vec3(0, 3, 0),
+        shape:shape,
+        material:defaultMaterial
+    })
+    body.position.copy(position)
+    body.addEventListener('collide',playHitSound)
+    world.addBody(body)
+
+    // Save in objects
+    objectsToUpate.push({ mesh, body })
+}
+
+//Cannon-es Debugger
+// const cannonDebugger = new CannonDebugger(scene, world, {
+//     // options...
+// })
 
 /**
  * Animate
@@ -444,7 +533,11 @@ const tick = () =>
         const { mesh, body } = obj
 
         mesh.position.copy(body.position)
+        mesh.quaternion.copy(body.quaternion)
     }
+
+    // // Update the CannonDebugger meshes
+    // cannonDebugger.update() 
 
     // Update controls
     controls.update()
