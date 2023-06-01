@@ -2,7 +2,6 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'lil-gui'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { toHalfFloat } from 'three/src/extras/DataUtils'
 
 
 /**
@@ -61,10 +60,13 @@ gui.add(debugObject,'envMapIntensity').min(0).max(10).step(0.001).onChange(updat
 /**
  * Models
  */
-gltfLoader.load('/models/FlightHelmet/glTF/FlightHelmet.gltf',(gltf) => {
+// gltfLoader.load('/models/FlightHelmet/glTF/FlightHelmet.gltf',(gltf) => {      //for helmet
+gltfLoader.load('/models/hamburger.glb',(gltf) => {
     //console.log(gltf.scene)
-    gltf.scene.scale.set(10,10,10)
-    gltf.scene.position.set(0,-4,0)
+    // gltf.scene.scale.set(10,10,10)                  //for helmet
+    // gltf.scene.position.set(0,-4,0)                  //for helmet
+    gltf.scene.scale.set(0.3,0.3,0.3) //for burger
+    gltf.scene.position.set(0,-1,0) //for burger
     gltf.scene.rotation.y = Math.PI * 0.5
     scene.add(gltf.scene)
 
@@ -117,6 +119,7 @@ directionalLight.position.set(0.25,3,-2.25)
 directionalLight.castShadow = true
 directionalLight.shadow.camera.far = 15
 directionalLight.shadow.mapSize.set(1024,1024)
+directionalLight.shadow.normalBias = 0.05
 scene.add(directionalLight)
 
 // const directionalLightCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
